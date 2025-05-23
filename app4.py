@@ -9,20 +9,33 @@ import pandas as pd
 import google.generativeai as genai
 
 # Configure Gemini AI
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", st.secrets.get("GOOGLE_API_KEY", ""))
-if not GOOGLE_API_KEY:
-    st.error("⚠️ Google API Key is not configured. Please set it in the secrets.")
-else:
-    genai.configure(api_key=GOOGLE_API_KEY)
+try:
+    GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY") or st.secrets["GOOGLE_API_KEY"]
+    if not GOOGLE_API_KEY:
+        st.error("⚠️ Google API Key is not configured. Please set it in the secrets.")
+    else:
+        genai.configure(api_key=GOOGLE_API_KEY)
+except Exception as e:
+    st.error("⚠️ Error accessing Google API Key. Please check your secrets configuration.")
 
 # Database configuration from secrets (for development/testing)
-DB_CONFIG = {
-    'user': os.getenv('DB_USER', st.secrets.get('DB_USER', '')),
-    'password': os.getenv('DB_PASSWORD', st.secrets.get('DB_PASSWORD', '')),
-    'host': os.getenv('DB_HOST', st.secrets.get('DB_HOST', '')),
-    'port': os.getenv('DB_PORT', st.secrets.get('DB_PORT', '3306')),
-    'database': os.getenv('DB_NAME', st.secrets.get('DB_NAME', ''))
-}
+try:
+    DB_CONFIG = {
+        'user': os.getenv('DB_USER') or st.secrets["DB_USER"],
+        'password': os.getenv('DB_PASSWORD') or st.secrets["DB_PASSWORD"],
+        'host': os.getenv('DB_HOST') or st.secrets["DB_HOST"],
+        'port': os.getenv('DB_PORT') or st.secrets["DB_PORT"],
+        'database': os.getenv('DB_NAME') or st.secrets["DB_NAME"]
+    }
+except Exception as e:
+    DB_CONFIG = {
+        'user': '',
+        'password': '',
+        'host': '',
+        'port': '3306',
+        'database': ''
+    }
+    st.warning("⚠️ No database configuration found in secrets. Please enter database credentials manually.")
 
 def get_db_schema(engine):
     inspector = inspect(engine)
@@ -105,6 +118,14 @@ else:
         use_ssl = True
         st.success("✅ Using saved database configuration")
 
+        # Display current configuration (without sensitive data)
+        st.info(f"""Current Configuration:
+        - Host: {db_host}
+        - Port: {db_port}
+        - Database: {db_name}
+        - User: {db_user}
+        """)
+
 conn_status = st.empty()
 schema_prompt = ""
 
@@ -160,6 +181,7 @@ if st.button("Connect to Database"):
             st.error("1. Is accessible from the internet")
             st.error("2. Has the correct firewall rules to allow incoming connections")
             st.error("3. Has the user's IP whitelisted")
+            st.error("\nNote: 'localhost' will not work in cloud deployment. You need a publicly accessible database.")
 
 question = st.text_input("Ask your question:")
 if st.button("Generate Query") and 'engine' in st.session_state:
