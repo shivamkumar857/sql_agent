@@ -6,10 +6,19 @@ import os
 import sqlalchemy
 from sqlalchemy import create_engine, inspect
 import pandas as pd
-
 import google.generativeai as genai
 
+# Configure Gemini AI
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+
+# Database configuration
+DB_CONFIG = {
+    'user': os.getenv('DB_USER', st.secrets.get('DB_USER', '')),
+    'password': os.getenv('DB_PASSWORD', st.secrets.get('DB_PASSWORD', '')),
+    'host': os.getenv('DB_HOST', st.secrets.get('DB_HOST', '')),
+    'port': os.getenv('DB_PORT', st.secrets.get('DB_PORT', '3306')),
+    'database': os.getenv('DB_NAME', st.secrets.get('DB_NAME', ''))
+}
 
 def get_db_schema(engine):
     inspector = inspect(engine)
@@ -53,25 +62,34 @@ st.set_page_config(page_title="Database Conversational AI")
 st.header("Ask Your Database Anything")
 
 # Database connection inputs
-db_type = st.selectbox("Database Type", ["mysql", "postgresql", "sqlite"])
-db_user = st.text_input("Username")
-db_password = st.text_input("Password", type="password")
-db_host = st.text_input("Host", "localhost")
-db_port = st.text_input("Port", "3306" if db_type == "mysql" else "5432" if db_type == "postgresql" else "")
-db_name = st.text_input("Database Name")
+if not any(DB_CONFIG.values()): # If no environment variables are set
+    db_type = st.selectbox("Database Type", ["mysql", "postgresql", "sqlite"])
+    db_user = st.text_input("Username")
+    db_password = st.text_input("Password", type="password")
+    db_host = st.text_input("Host", "localhost")
+    db_port = st.text_input("Port", "3306" if db_type == "mysql" else "5432" if db_type == "postgresql" else "")
+    db_name = st.text_input("Database Name")
+else:
+    # Use environment variables
+    db_type = "mysql"  # Since we're using MySQL
+    db_user = DB_CONFIG['user']
+    db_password = DB_CONFIG['password']
+    db_host = DB_CONFIG['host']
+    db_port = DB_CONFIG['port']
+    db_name = DB_CONFIG['database']
+    st.success("✅ Using configured database settings")
 
 conn_status = st.empty()
 schema_prompt = ""
 
-if st.button("Connect to Database"):
+if st.button("Connect to Database") or all([DB_CONFIG[key] for key in ['user', 'password', 'host', 'database']]):
     try:
         if db_type == "sqlite":
             engine = create_engine(f"sqlite:///{db_name}")
         elif db_type == "mysql":
             # Using pymysql driver
-            engine = create_engine(
-                f"mysql+pymysql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
-            )
+            connection_string = f"mysql+pymysql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+            engine = create_engine(connection_string)
         elif db_type == "postgresql":
             engine = create_engine(
                 f"postgresql+psycopg2://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
