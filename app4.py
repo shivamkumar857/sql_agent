@@ -9,9 +9,13 @@ import pandas as pd
 import google.generativeai as genai
 
 # Configure Gemini AI
-genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", st.secrets.get("GOOGLE_API_KEY", ""))
+if not GOOGLE_API_KEY:
+    st.error("⚠️ Google API Key is not configured. Please set it in the secrets.")
+else:
+    genai.configure(api_key=GOOGLE_API_KEY)
 
-# Database configuration
+# Database configuration from secrets (for development/testing)
 DB_CONFIG = {
     'user': os.getenv('DB_USER', st.secrets.get('DB_USER', '')),
     'password': os.getenv('DB_PASSWORD', st.secrets.get('DB_PASSWORD', '')),
@@ -61,39 +65,65 @@ def execute_query(query, engine):
 st.set_page_config(page_title="Database Conversational AI")
 st.header("Ask Your Database Anything")
 
+# Add connection type selector
+connection_type = st.radio(
+    "Choose connection method:",
+    ["Enter Database Credentials", "Use Saved Configuration"],
+    help="Select how you want to connect to your database"
+)
+
 # Database connection inputs
-if not any(DB_CONFIG.values()): # If no environment variables are set
+if connection_type == "Enter Database Credentials":
+    st.info("⚠️ Make sure your database is accessible from the internet if you're using this deployed app.")
+    
     db_type = st.selectbox("Database Type", ["mysql", "postgresql", "sqlite"])
     db_user = st.text_input("Username")
     db_password = st.text_input("Password", type="password")
-    db_host = st.text_input("Host", "localhost")
+    db_host = st.text_input("Host")
     db_port = st.text_input("Port", "3306" if db_type == "mysql" else "5432" if db_type == "postgresql" else "")
     db_name = st.text_input("Database Name")
+    
+    # Show connection string example
+    if db_type == "mysql":
+        st.info(f"Connection string format: mysql+pymysql://username:password@host:3306/database")
+    elif db_type == "postgresql":
+        st.info(f"Connection string format: postgresql+psycopg2://username:password@host:5432/database")
+    
+    # Add SSL option for secure connection
+    use_ssl = st.checkbox("Use SSL Connection", value=True)
 else:
-    # Use environment variables
-    db_type = "mysql"  # Since we're using MySQL
-    db_user = DB_CONFIG['user']
-    db_password = DB_CONFIG['password']
-    db_host = DB_CONFIG['host']
-    db_port = DB_CONFIG['port']
-    db_name = DB_CONFIG['database']
-    st.success("✅ Using configured database settings")
+    if not any(DB_CONFIG.values()):
+        st.error("⚠️ No saved configuration found. Please configure the database credentials in the app secrets or use manual entry.")
+        st.stop()
+    else:
+        db_type = "mysql"  # Since we're using MySQL
+        db_user = DB_CONFIG['user']
+        db_password = DB_CONFIG['password']
+        db_host = DB_CONFIG['host']
+        db_port = DB_CONFIG['port']
+        db_name = DB_CONFIG['database']
+        use_ssl = True
+        st.success("✅ Using saved database configuration")
 
 conn_status = st.empty()
 schema_prompt = ""
 
-if st.button("Connect to Database") or all([DB_CONFIG[key] for key in ['user', 'password', 'host', 'database']]):
+if st.button("Connect to Database"):
     try:
         if db_type == "sqlite":
             engine = create_engine(f"sqlite:///{db_name}")
         elif db_type == "mysql":
-            # Using pymysql driver
+            # Using pymysql driver with SSL if enabled
             connection_string = f"mysql+pymysql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+            if use_ssl:
+                connection_string += "?ssl=true"
             engine = create_engine(connection_string)
         elif db_type == "postgresql":
-            engine = create_engine(
-                f"postgresql+psycopg2://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
-            )
+            # Using psycopg2 driver with SSL if enabled
+            connection_string = f"postgresql+psycopg2://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+            if use_ssl:
+                connection_string += "?sslmode=require"
+            engine = create_engine(connection_string)
         
         # Test connection
         with engine.connect() as conn:
@@ -116,16 +146,6 @@ if st.button("Connect to Database") or all([DB_CONFIG[key] for key in ['user', '
         4. Handle ambiguous columns with table prefixes
         5. Return only valid SQL without markdown
         6. If no results found, query should still be valid
-        
-        Examples:
-        Q: How many students in Data Science?
-        A: SELECT COUNT(*) FROM student WHERE class = 'Data Science'
-        
-        Q: Show students with marks > 80 in CS?
-        A: SELECT s.name, m.marks 
-           FROM student s 
-           INNER JOIN marks m ON s.id = m.student_id 
-           WHERE m.marks > 80 AND s.class = 'CS'
         """
         
         st.session_state.base_prompt = base_prompt
@@ -135,6 +155,11 @@ if st.button("Connect to Database") or all([DB_CONFIG[key] for key in ['user', '
         conn_status.error(f"❌ Missing driver: Install required package with:\n`pip install {missing_module}`")
     except Exception as e:
         conn_status.error(f"❌ Connection failed: {e}")
+        if "Can't connect to MySQL server" in str(e):
+            st.error("⚠️ Make sure your database server:")
+            st.error("1. Is accessible from the internet")
+            st.error("2. Has the correct firewall rules to allow incoming connections")
+            st.error("3. Has the user's IP whitelisted")
 
 question = st.text_input("Ask your question:")
 if st.button("Generate Query") and 'engine' in st.session_state:
