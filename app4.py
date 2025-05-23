@@ -50,7 +50,8 @@ def execute_query(query, engine):
 
 # Streamlit UI
 st.set_page_config(page_title="Database Conversational AI")
-st.header("Ask Your Database Anything")st.markdown("---")
+st.header("Ask Your Database Anything")
+st.markdown("---")
 st.write("Note:- your database must by in online platform such as render.com if you use postgresql then use render.com platform for online your database in free \n And if you use sql then use any free platform where you can make online your database such as railway.app,planetscale")
 st.markdown("---")
 st.write("\n\n if you your database in the local machine such as mysql then generally use the port 3306 and enter your username and password and host name and your databaes name" )
