@@ -50,8 +50,24 @@ def execute_query(query, engine):
 
 # Streamlit UI
 st.set_page_config(page_title="Database Conversational AI")
-st.header("Ask Your Database Anything")
-
+st.header("Ask Your Database Anything")st.markdown("---")
+st.write("Note:- your database must by in online platform such as render.com if you use postgresql then use render.com platform for online your database in free \n And if you use sql then use any free platform where you can make online your database such as railway.app,planetscale")
+st.markdown("---")
+st.write("\n\n if you your database in the local machine such as mysql then generally use the port 3306 and enter your username and password and host name and your databaes name" )
+st.write("\n \n \n in case of mysql and your database in local machine then by default the port is 3306 and username is root and and host name is localhost and")
+st.markdown("---")
+st.write("\n\n\n\n\n Note:-  if you have not any database on local machine or on online platform then use my database which are already in the online platform such as render.com for postgresql")
+st.markdown("---")
+st.markdown("""\n\n\n\n\n  Select database as postgresql    
+            type username:- onlineshopping_mlpn_user      
+            password:- YdFpFBsowzxrSgcGDW8KVI1gYJJxvDVA     
+            db host:- dpg-d0odd13e5dus73avjr2g-a.oregon-postgres.render.com   
+            database name :- onlineshopping_mlpn""")
+t.markdown("---")
+st.markdown("""\n\n\n\n\n Note:-  if you use my database based on the above then use the below username and password and host name and database name
+            \n\n Then my database name is onlineshopping which has various tables such as customer,product,order,order_item,category,cart,cart_item and so on
+            you can use this database for your testing purpose and you can also use your own databaseL 
+            \n \n so ask onlineshopping related questions based on the above database and you can also use your own database for testing purpose""")
 # Database connection inputs
 db_type = st.selectbox("Database Type", ["mysql", "postgresql", "sqlite"])
 db_user = st.text_input("Username")
