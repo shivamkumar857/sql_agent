@@ -64,7 +64,7 @@ st.markdown("""\n\n\n\n\n  Select database as postgresql
             password:- YdFpFBsowzxrSgcGDW8KVI1gYJJxvDVA     
             db host:- dpg-d0odd13e5dus73avjr2g-a.oregon-postgres.render.com   
             database name :- onlineshopping_mlpn""")
-t.markdown("---")
+st.markdown("---")
 st.markdown("""\n\n\n\n\n Note:-  if you use my database based on the above then use the below username and password and host name and database name
             \n\n Then my database name is onlineshopping which has various tables such as customer,product,order,order_item,category,cart,cart_item and so on
             you can use this database for your testing purpose and you can also use your own databaseL 
